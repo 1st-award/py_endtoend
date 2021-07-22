@@ -140,8 +140,8 @@ async def 도움말(ctx):
     await ctx.send("=============파이썬 끝말잇기=============\n" +
                    "사전 데이터 제공: 국립국어원 한국어기초사전\n" +
                    "                                 - - - 게임 방법 - - -\n" +
-                   "가장 처음 단어를 제시하면 끝말잇기가 시작됩니다\n" +
-                   "'/그만'을 입력하면 게임이 종료되며\n'/다시'를 입력하여 게임을 다시 시작할 수 있습니다.\n" +
+                   "'!시작'을 입력하면 게임이 시작됩니다. 단어를 입력해 주세요.\n" +
+                   "'!그만'을 입력하면 게임이 종료되며\n'!다시'를 입력하여 게임을 바로 다시 시작할 수 있습니다.\n" +
                    "                                  - - - 게임 규칙 - - -\n" +
                    "1. 사전에 등재된 명사여야 합니다\n" +
                    "2. 적어도 단어의 길이가 두 글자 이상이어야 합니다\n" +
@@ -157,13 +157,14 @@ async def 시작(ctx):
     await ctx.message.delete()
     # Is Ready
     if not playing:
-        await ctx.send('게임을 시작합니다. ' + '단어를 입력하여 끝말잇기를 시작합니다.', delete_after=5.0)
+        await ctx.send('게임을 시작합니다. 단어를 입력하여 끝말잇기를 시작합니다.', delete_after=5.0)
+        # !시작을 입력하면 whileList에 추가
         whiteList.append(ctx.author.id)
         # print(whiteList)
         playing = True
     # Is In game
     elif playing:
-        await ctx.send('이미 게임중입니다', delete_after=5.0)
+        await ctx.send('이미 게임중입니다', delete_after=3.0)
 
 
 # Game Stop
@@ -171,7 +172,7 @@ async def 시작(ctx):
 async def 그만(ctx):
     await ctx.message.delete()
     global history, answord, playing
-    await ctx.send('컴퓨터의 승리!', delete_after=5.0)
+    await ctx.send('컴퓨터의 승리!', delete_after=3.0)
     playing = False
     history = []
     answord = ''
@@ -182,15 +183,15 @@ async def 그만(ctx):
 async def 다시(ctx):
     await ctx.message.delete()
     global history, answord
-    await ctx.send('게임을 다시 시작합니다.', delete_after=5.0)
+    await ctx.send('게임을 다시 시작합니다.', delete_after=3.0)
     history = []
     answord = ''
 
 
+# !단어를 입력받지 않기 위해 on_message 활용
 @bot.event
 async def on_message(ctx):
-    print(ctx.content)
-
+    # print(ctx.content)
     if ctx.author == bot.user:
         return
     # 미리 함수로 지정된 함수들의 이름이 있으면 process_commands를 통해 출력
@@ -199,14 +200,19 @@ async def on_message(ctx):
             if ctx.content.startswith(firstMessage):
                 await bot.process_commands(ctx)
     else:
+        # !참가 한 사람만 게임을 시작 할 수 있습니다.
         if ctx.author.id in whiteList:
             await ctx.delete()
             global answord, sword, wordOK, history, blacklist
-            print(1, history)
-            query = ctx.content
-            print(ctx.content)
+            # !'단어'를 입력할 시 !를 제거합니다.
+            if ctx.content[0] in '!':
+                query = ctx.content.replace("!", "")
+            else:
+                query = ctx.content
+            # Playing not True
             if not playing:
-                await ctx.channel.send('게임을 시작하지 않았습니다.', delete_after=5.0)
+                await ctx.channel.send('게임을 시작하지 않았습니다.', delete_after=3.0)
+            # Playing True
             elif playing:
                 wordOK = True
                 # 첫 글자의 초성 분석하여 두음법칙 적용 -> 규칙에 아직 완벽하게 맞지 않으므로 차후 수정 필요
@@ -214,55 +220,51 @@ async def on_message(ctx):
                     sdis = hgtk.letter.decompose(sword)
                     qdis = hgtk.letter.decompose(query[0])
                     if sdis[0] == 'ㄹ' and qdis[0] == 'ㄴ':
-                        await ctx.channel.send('두음법칙 적용됨', delete_after=5.0)
+                        await ctx.channel.send('두음법칙 적용됨', delete_after=3.0)
                     elif (sdis[0] == 'ㄹ' or sdis[0] == 'ㄴ') and qdis[0] == 'ㅇ' and qdis[1] in (
                             'ㅣ', 'ㅑ', 'ㅕ', 'ㅛ', 'ㅠ', 'ㅒ', 'ㅖ'):
-                        await ctx.channel.send('두음법칙 적용됨', delete_after=5.0)
+                        await ctx.channel.send('두음법칙 적용됨', delete_after=3.0)
                     else:
                         wordOK = False
-                        await ctx.channel.send(sword + '(으)로 시작하는 단어여야 합니다.', delete_after=5.0)
-
+                        await ctx.channel.send(sword + '(으)로 시작하는 단어여야 합니다.', delete_after=15.0)
+                # 문제가 있는 단어인지 확인
                 await ctx.channel.send(PlayIssuse(query), delete_after=3.0)
-
+                # 단어에 문제가 없으면 봇이 쓸 단어 검색 및 결과 출력
                 if wordOK:
                     history.append(query)
                     start = query[len(query) - 1]
                     ans = findword(start + '*')
-
+                    # ㄹ -> ㄴ 검색
                     if ans == '':
-                        # ㄹ -> ㄴ 검색
                         sdis = hgtk.letter.decompose(start)
                         if sdis[0] == 'ㄹ':
                             newq = hgtk.letter.compose('ㄴ', sdis[1], sdis[2])
-                            await ctx.channel.send(start + '->' + newq, delete_after=5.0)
+                            # print(start + '->' + newq)
                             start = newq
                             ans = findword(newq + '*')
-
+                    # (ㄹ->)ㄴ -> ㅇ 검색
                     if ans == '':
-                        # (ㄹ->)ㄴ -> ㅇ 검색
                         sdis = hgtk.letter.decompose(start)
                         if sdis[0] == 'ㄴ' and sdis[1] in ('ㅣ', 'ㅑ', 'ㅕ', 'ㅛ', 'ㅠ', 'ㅒ', 'ㅖ'):
                             newq = hgtk.letter.compose('ㅇ', sdis[1], sdis[2])
-                            await ctx.channel.send(start + '->' + newq, delete_after=5.0)
+                            # print(start + '->' + newq)
                             ans = findword(newq + '*')
-
+                    # 찾을 단어가 없을 때
                     if ans == '':
-                        await ctx.channel.send('당신의 승리!', delete_after=5.0)
+                        await ctx.channel.send('당신의 승리!', delete_after=3.0)
                         history = []
                         answord = ''
                     else:
                         answord = midReturn(ans, '<word>', '</word>')  # 단어 불러오기
                         ansdef = midReturn(ans, '<definition>', '</definition>')  # 품사 불러오기
                         history.append(answord)
-
-                        await ctx.channel.send(query + '>' + answord + '\n(' + ansdef + ')\n', delete_after=5.0)
+                        await ctx.channel.send(query + '>' + answord + '\n(' + ansdef + ')\n', delete_after=3.0)
                         sword = answord[len(answord) - 1]
 
                         # 컴퓨터 승리여부 체크
                         # if findword(sword) == '':
                         #    print('tip: \'/다시\'를 입력하여 게임을 다시 시작할 수 있습니다')
-                        await ctx.channel.send(sword + '(으)로 시작하는 단어를 입력해 주십시오.', delete_after=15.0)
+                        await ctx.channel.send(sword + '(으)로 시작하는 단어를 입력해 주세요.', delete_after=15.0)
 
 
 bot.run(os.environ["BOT_TOKEN"])
-
