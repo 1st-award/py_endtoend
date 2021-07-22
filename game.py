@@ -1,18 +1,17 @@
-# pip install requests hgtk
 import discord
 import hgtk
 import random
 import requests
+import os
 from discord.ext import commands
-from discord.ext.commands import bot
 
-#### Discord ####
+# ///Discord/// #
 # Discord Bot command prefix
 bot = commands.Bot(command_prefix='!')
 # !도움말을 위한 기존에 있는 help 제거
 bot.remove_command('help')
 commandList = ['!도움말', '!시작', '!그만', '!다시']
-#### 끝말잇기 ####
+# ///끝말잇기/// #
 whiteList = []
 answord = ''
 sword = ''
@@ -23,7 +22,8 @@ history = []
 # 좀 치사한 한방단어 방지 목록
 blacklist = ['즘', '틱', '늄', '슘', '퓸', '늬', '뺌', '섯', '숍', '튼', '름', '늠', '쁨']
 # 키 발급은 https://krdict.korean.go.kr/openApi/openApiInfo
-apikey = '47EB43C7CE5F26EC1C29499CA4C35D18'
+apikey = os.environ["DIC_TOKEN"]
+
 
 # Discord Bot Ready
 @bot.event
@@ -40,7 +40,8 @@ async def on_ready():  # 디스코드 봇 로그인
 def midReturn(val, s, e):
     if s in val:
         val = val[val.find(s) + len(s):]
-        if e in val: val = val[:val.find(e)]
+        if e in val:
+            val = val[:val.find(e)]
     return val
 
 
@@ -51,7 +52,8 @@ def midReturn_all(val, s, e):
         tmp = val.split(s)
         val = []
         for i in range(0, len(tmp)):
-            if e in tmp[i]: val.append(tmp[i][:tmp[i].find(e)])
+            if e in tmp[i]:
+                val.append(tmp[i][:tmp[i].find(e)])
     else:
         val = []
     return val
@@ -70,7 +72,7 @@ def findword(query):
             # 한글자가 아니고 품사가 명사일때
             word = midReturn(w, '<word>', '</word>')
             pos = midReturn(w, '<pos>', '</pos>')
-            if len(word) > 1 and pos == '명사' and not word in history and not word[len(word) - 1] in blacklist:
+            if len(word) > 1 and pos == '명사' and word not in history and not word[len(word) - 1] in blacklist:
                 ans.append(w)
     if len(ans) > 0:
         return random.choice(ans)
@@ -91,7 +93,8 @@ def checkexists(query):
             # 한글자가 아니고 품사가 명사일때
             word = midReturn(w, '<word>', '</word>')
             pos = midReturn(w, '<pos>', '</pos>')
-            if len(word) > 1 and pos == '명사' and word == query: ans = w
+            if len(word) > 1 and pos == '명사' and word == query:
+                ans = w
 
     if len(ans) > 0:
         return ans
@@ -100,31 +103,32 @@ def checkexists(query):
 
 
 # Game Play Issue
-def PlayIssuse(ctx, query):
+def PlayIssuse(query):
     global wordOK
-    print('PlayIssue')
+    # print('PlayIssue')
     if len(query) == 1:
-        print('up to 2words')
+        # print('up to 2words')
         wordOK = False
         return '적어도 두 글자가 되어야 합니다'
 
     if query in history:
-        print('overlap')
+        # print('overlap')
         wordOK = False
         return '이미 입력한 단어입니다'
 
     if query[len(query) - 1] in blacklist:
-        print("cheating")
-        return '아.. 좀 치사한데요..'
+        # print("cheating")
+        wordOK = False
+        return '아.. 좀 치사한데요..\n다시 입력해주세요!'
 
     if wordOK:
-        print("wordOK")
+        # print("wordOK")
         # 단어의 유효성을 체크
         ans = checkexists(query)
         if ans == '':
-            print("유효한")
+            # print("유효한")
             wordOK = False
-            return '유효한 단어를 입력해 주십시오'
+            return '유효한 단어를 입력해 주세요'
         else:
             return '(' + midReturn(ans, '<definition>', '</definition>') + ')\n'
 
@@ -182,70 +186,7 @@ async def 다시(ctx):
     history = []
     answord = ''
 
-'''
-# Game Playing
-@bot.command()
-async def 끝말잇기(ctx):
-    await ctx.message.delete()
-    global answord, sword, wordOK, history, blacklist
-    print(1, history)
-    query = ctx.message.content.replace("!기 ", "")
-    if not playing:
-        await ctx.send('게임을 시작하지 않았습니다.', delete_after=5.0)
-    elif playing:
-        wordOK = True
-        # 첫 글자의 초성 분석하여 두음법칙 적용 -> 규칙에 아직 완벽하게 맞지 않으므로 차후 수정 필요
-        if not len(history) == 0 and not query[0] == sword and not query == '':
-            sdis = hgtk.letter.decompose(sword)
-            qdis = hgtk.letter.decompose(query[0])
-            if sdis[0] == 'ㄹ' and qdis[0] == 'ㄴ':
-                await ctx.send('두음법칙 적용됨', delete_after=5.0)
-            elif (sdis[0] == 'ㄹ' or sdis[0] == 'ㄴ') and qdis[0] == 'ㅇ' and qdis[1] in (
-                    'ㅣ', 'ㅑ', 'ㅕ', 'ㅛ', 'ㅠ', 'ㅒ', 'ㅖ'):
-                await ctx.send('두음법칙 적용됨', delete_after=5.0)
-            else:
-                wordOK = False
-                await ctx.send(sword + '(으)로 시작하는 단어여야 합니다.', delete_after=5.0)
 
-        await ctx.send(PlayIssuse(ctx, query), delete_after=3.0)
-
-        if wordOK:
-            history.append(query)
-            start = query[len(query) - 1]
-            ans = findword(start + '*')
-
-            if ans == '':
-                # ㄹ -> ㄴ 검색
-                sdis = hgtk.letter.decompose(start)
-                if sdis[0] == 'ㄹ':
-                    newq = hgtk.letter.compose('ㄴ', sdis[1], sdis[2])
-                    await ctx.send(start + '->' + newq, delete_after=5.0)
-                    start = newq
-                    ans = findword(newq + '*')
-
-            if ans == '':
-                # (ㄹ->)ㄴ -> ㅇ 검색
-                sdis = hgtk.letter.decompose(start)
-                if sdis[0] == 'ㄴ' and sdis[1] in ('ㅣ', 'ㅑ', 'ㅕ', 'ㅛ', 'ㅠ', 'ㅒ', 'ㅖ'):
-                    newq = hgtk.letter.compose('ㅇ', sdis[1], sdis[2])
-                    await ctx.send(start + '->' + newq, delete_after=5.0)
-                    ans = findword(newq + '*')
-
-            if ans == '':
-                await ctx.send('당신의 승리!', delete_after=5.0)
-            else:
-                answord = midReturn(ans, '<word>', '</word>')  # 단어 불러오기
-                ansdef = midReturn(ans, '<definition>', '</definition>')  # 품사 불러오기
-                history.append(answord)
-
-                await ctx.send(query + '>' + answord + '\n(' + ansdef + ')\n', delete_after=5.0)
-                sword = answord[len(answord) - 1]
-
-                # 컴퓨터 승리여부 체크
-                # if findword(sword) == '':
-                #    print('tip: \'/다시\'를 입력하여 게임을 다시 시작할 수 있습니다')
-                await ctx.send(sword + '(으)로 시작하는 단어를 입력해 주십시오.', delete_after=15.0)
-'''
 @bot.event
 async def on_message(ctx):
     print(ctx.content)
@@ -281,7 +222,7 @@ async def on_message(ctx):
                         wordOK = False
                         await ctx.channel.send(sword + '(으)로 시작하는 단어여야 합니다.', delete_after=5.0)
 
-                await ctx.channel.send(PlayIssuse(ctx, query), delete_after=3.0)
+                await ctx.channel.send(PlayIssuse(query), delete_after=3.0)
 
                 if wordOK:
                     history.append(query)
@@ -307,6 +248,8 @@ async def on_message(ctx):
 
                     if ans == '':
                         await ctx.channel.send('당신의 승리!', delete_after=5.0)
+                        history = []
+                        answord = ''
                     else:
                         answord = midReturn(ans, '<word>', '</word>')  # 단어 불러오기
                         ansdef = midReturn(ans, '<definition>', '</definition>')  # 품사 불러오기
@@ -321,104 +264,5 @@ async def on_message(ctx):
                         await ctx.channel.send(sword + '(으)로 시작하는 단어를 입력해 주십시오.', delete_after=15.0)
 
 
-'''
-while (playing):
+bot.run(os.environ["BOT_TOKEN"])
 
-    wordOK = False
-
-    while (not wordOK):
-        query = input(answord + ' > ')
-        wordOK = True
-
-        if query == '/그만':
-            playing = False
-            print('컴퓨터의 승리!')
-            break
-        elif query == '/다시':
-            history = []
-            answord = ''
-            print('게임을 다시 시작합니다.')
-            wordOK = False
-        else:
-            if query == '':
-                wordOK = False
-
-                if len(history) == 0:
-                    print('')
-                else:
-                    print(sword + '(으)로 시작하는 단어를 입력해 주십시오.')
-
-            else:
-                # 첫 글자의 초성 분석하여 두음법칙 적용 -> 규칙에 아직 완벽하게 맞지 않으므로 차후 수정 필요
-                if not len(history) == 0 and not query[0] == sword and not query == '':
-                    sdis = hgtk.letter.decompose(sword)
-                    qdis = hgtk.letter.decompose(query[0])
-                    if sdis[0] == 'ㄹ' and qdis[0] == 'ㄴ':
-                        print('두음법칙 적용됨')
-                    elif (sdis[0] == 'ㄹ' or sdis[0] == 'ㄴ') and qdis[0] == 'ㅇ' and qdis[1] in (
-                            'ㅣ', 'ㅑ', 'ㅕ', 'ㅛ', 'ㅠ', 'ㅒ', 'ㅖ'):
-                        print('두음법칙 적용됨')
-                    else:
-                        wordOK = False
-                        print(sword + '(으)로 시작하는 단어여야 합니다.')
-
-                if len(query) == 1:
-                    wordOK = False
-                    print('적어도 두 글자가 되어야 합니다')
-
-                if query in history:
-                    wordOK = False
-                    print('이미 입력한 단어입니다')
-
-                if query[len(query) - 1] in blacklist:
-                    print('아.. 좀 치사한데요..')
-
-                if wordOK:
-                    # 단어의 유효성을 체크
-                    ans = checkexists(query)
-                    if ans == '':
-                        wordOK = False
-                        print('유효한 단어를 입력해 주십시오')
-                    else:
-                        print('(' + midReturn(ans, '<definition>', '</definition>') + ')\n')
-
-    history.append(query)
-
-    if playing:
-        start = query[len(query) - 1]
-
-        ans = findword(start + '*')
-
-        if ans == '':
-            # ㄹ -> ㄴ 검색
-            sdis = hgtk.letter.decompose(start)
-            if sdis[0] == 'ㄹ':
-                newq = hgtk.letter.compose('ㄴ', sdis[1], sdis[2])
-                print(start, '->', newq)
-                start = newq
-                ans = findword(newq + '*')
-
-        if ans == '':
-            # (ㄹ->)ㄴ -> ㅇ 검색
-            sdis = hgtk.letter.decompose(start)
-            if sdis[0] == 'ㄴ' and sdis[1] in ('ㅣ', 'ㅑ', 'ㅕ', 'ㅛ', 'ㅠ', 'ㅒ', 'ㅖ'):
-                newq = hgtk.letter.compose('ㅇ', sdis[1], sdis[2])
-                print(start, '->', newq)
-                ans = findword(newq + '*')
-
-        if ans == '':
-            print('당신의 승리!')
-            break
-        else:
-            answord = midReturn(ans, '<word>', '</word>')  # 단어 불러오기
-            ansdef = midReturn(ans, '<definition>', '</definition>')  # 품사 불러오기
-            history.append(answord)
-
-            print(query, '>', answord, '\n(' + ansdef + ')\n')
-            sword = answord[len(answord) - 1]
-
-            # 컴퓨터 승리여부 체크
-            # if findword(sword) == '':
-            #    print('tip: \'/다시\'를 입력하여 게임을 다시 시작할 수 있습니다')
-'''
-bot.run('NDcyOTgxMTM4NjEzNDY5MTg0.W11AAw.bhWbF2QAhtN42l07goXJo0qVaj0')
