@@ -22,7 +22,8 @@ history = []
 # 좀 치사한 한방단어 방지 목록
 blacklist = ['즘', '틱', '늄', '슘', '퓸', '늬', '뺌', '섯', '숍', '튼', '름', '늠', '쁨']
 # 키 발급은 https://krdict.korean.go.kr/openApi/openApiInfo
-apikey = os.environ["DIC_TOKEN"]
+# apikey = os.environ["DIC_TOKEN"]
+apikey = '47EB43C7CE5F26EC1C29499CA4C35D18'
 
 
 # Discord Bot Ready
@@ -202,18 +203,15 @@ async def on_message(ctx):
     else:
         # !참가 한 사람만 게임을 시작 할 수 있습니다.
         if ctx.author.id in whiteList:
-            await ctx.delete()
-            global answord, sword, wordOK, history, blacklist
+            global answord, sword, wordOK, history, blacklist, playing
             # !'단어'를 입력할 시 !를 제거합니다.
-            if ctx.content[0] in '!':
+            if ctx.content[0] in '!' and playing:
                 query = ctx.content.replace("!", "")
             else:
                 query = ctx.content
-            # Playing not True
-            if not playing:
-                await ctx.channel.send('게임을 시작하지 않았습니다.', delete_after=3.0)
             # Playing True
-            elif playing:
+            if playing:
+                await ctx.delete()
                 wordOK = True
                 # 첫 글자의 초성 분석하여 두음법칙 적용 -> 규칙에 아직 완벽하게 맞지 않으므로 차후 수정 필요
                 if not len(history) == 0 and not query[0] == sword and not query == '':
@@ -252,6 +250,7 @@ async def on_message(ctx):
                     # 찾을 단어가 없을 때
                     if ans == '':
                         await ctx.channel.send('당신의 승리!', delete_after=3.0)
+                        playing = False
                         history = []
                         answord = ''
                     else:
@@ -267,4 +266,5 @@ async def on_message(ctx):
                         await ctx.channel.send(sword + '(으)로 시작하는 단어를 입력해 주세요.', delete_after=15.0)
 
 
-bot.run(os.environ["BOT_TOKEN"])
+# bot.run(os.environ["BOT_TOKEN"])
+bot.run('NDcyOTgxMTM4NjEzNDY5MTg0.W11AAw.iowk5N0IjhrZXytodkdKYIlTo_U')
